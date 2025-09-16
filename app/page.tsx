@@ -7,10 +7,11 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Slider } from "@/components/ui/slider"
-import { AlertTriangle, Heart, MessageCircle, BookOpen, Home, Phone, TrendingUp, Calendar, Smile } from "lucide-react"
+import { RatingCircles } from "@/components/RatingCircles"
+import BreathingMeditation from "@/components/BreathingMeditation"
+import { AlertTriangle, Heart, MessageCircle, BookOpen, Home, Phone, TrendingUp, Calendar, Smile, Activity, ScrollText } from "lucide-react"
 
-type Page = "welcome" | "auth" | "dashboard" | "chat" | "articles"
+type Page = "welcome" | "auth" | "dashboard" | "chat" | "articles" | "stories" | "activities"
 
 type MoodEntry = {
   date: string
@@ -231,6 +232,22 @@ export default function MindspaceApp() {
                 <BookOpen className="h-4 w-4" />
                 <span>Articles</span>
               </Button>
+              <Button
+                variant={currentPage === "stories" ? "default" : "ghost"}
+                onClick={() => setCurrentPage("stories")}
+                className="flex items-center space-x-2"
+              >
+                <ScrollText className="h-4 w-4" />
+                <span>Stories</span>
+              </Button>
+              <Button
+                variant={currentPage === "activities" ? "default" : "ghost"}
+                onClick={() => setCurrentPage("activities")}
+                className="flex items-center space-x-2"
+              >
+                <Activity className="h-4 w-4" />
+                <span>Activities</span>
+              </Button>
             </div>
           )}
 
@@ -444,37 +461,31 @@ export default function MindspaceApp() {
                     <Label className="text-sm font-medium mb-2 block">
                       Mood: {getMoodEmoji(todayQuiz.mood)} ({todayQuiz.mood}/10)
                     </Label>
-                    <Slider
-                      value={[todayQuiz.mood]}
-                      onValueChange={(value) => setTodayQuiz((prev) => ({ ...prev, mood: value[0] }))}
+                    <RatingCircles
+                      value={todayQuiz.mood}
+                      onChange={(val) => setTodayQuiz((prev) => ({ ...prev, mood: val }))}
                       max={10}
                       min={1}
-                      step={1}
-                      className="w-full"
                     />
                   </div>
 
                   <div>
                     <Label className="text-sm font-medium mb-2 block">Energy Level: ({todayQuiz.energy}/10)</Label>
-                    <Slider
-                      value={[todayQuiz.energy]}
-                      onValueChange={(value) => setTodayQuiz((prev) => ({ ...prev, energy: value[0] }))}
+                    <RatingCircles
+                      value={todayQuiz.energy}
+                      onChange={(val) => setTodayQuiz((prev) => ({ ...prev, energy: val }))}
                       max={10}
                       min={1}
-                      step={1}
-                      className="w-full"
                     />
                   </div>
 
                   <div>
                     <Label className="text-sm font-medium mb-2 block">Stress Level: ({todayQuiz.stress}/10)</Label>
-                    <Slider
-                      value={[todayQuiz.stress]}
-                      onValueChange={(value) => setTodayQuiz((prev) => ({ ...prev, stress: value[0] }))}
+                    <RatingCircles
+                      value={todayQuiz.stress}
+                      onChange={(val) => setTodayQuiz((prev) => ({ ...prev, stress: val }))}
                       max={10}
                       min={1}
-                      step={1}
-                      className="w-full"
                     />
                   </div>
 
@@ -487,6 +498,8 @@ export default function MindspaceApp() {
                       value={todayQuiz.gratitude}
                       onChange={(e) => setTodayQuiz((prev) => ({ ...prev, gratitude: e.target.value }))}
                       placeholder="Something you're thankful for..."
+                      autoComplete="off"
+                      enterKeyHint="done"
                     />
                   </div>
 
@@ -857,7 +870,7 @@ export default function MindspaceApp() {
                 <Button
                   onClick={() => setSelectedArticle(article)}
                   size="sm"
-                  className="bg-green-600 hover:bg-green-700"
+                  className="bg-green-600 hover:bg-green-700 shadow-sm hover:shadow-md transition-shadow"
                 >
                   Read More
                 </Button>
@@ -934,6 +947,10 @@ export default function MindspaceApp() {
         return <ChatPage />
       case "articles":
         return <ArticlesPage />
+      case "stories":
+        return <StoriesPage />
+      case "activities":
+        return <ActivitiesPage />
       default:
         return <WelcomePage />
     }
@@ -956,3 +973,71 @@ export default function MindspaceApp() {
     </div>
   )
 }
+
+
+  // Stories Page - AI generated stories placeholder aligned with future quiz
+  const StoriesPage = () => (
+    <div className="pt-20 pb-8 px-4 max-w-6xl mx-auto">
+      <div className="mb-8">
+        <h1 className="text-3xl font-bold text-green-800 mb-2">Stories</h1>
+        <p className="text-green-600">AI-generated stories inspired by common feelings and symptoms</p>
+      </div>
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        {[1, 2, 3, 4, 5, 6].map((i) => (
+          <Card key={i} className="bg-white/30 backdrop-blur-sm border-white/50 hover:shadow-md transition-shadow">
+            <CardHeader>
+              <CardTitle className="text-lg text-green-800">A New Morning, A New Chance</CardTitle>
+              <CardDescription className="text-green-700">Hope after a restless night</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <p className="text-sm text-green-700 leading-relaxed">
+                The sun rose softly as Mira sat by the window, her thoughts heavy yet curious. A gentle breath in, a
+                pause, and a breath out. She wasnt trying to fix everything today—just to notice the small moments
+                that still felt kind.
+              </p>
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+      <div className="mt-8 p-4 bg-green-50 border border-green-200 rounded-lg text-green-800">
+        Upcoming: Stories will adapt to your quiz responses to reflect your current mood and symptoms.
+      </div>
+    </div>
+  )
+
+  // Activities Page - meditation + brain teasers
+  const ActivitiesPage = () => (
+    <div className="pt-20 pb-8 px-4 max-w-6xl mx-auto">
+      <div className="mb-8">
+        <h1 className="text-3xl font-bold text-green-800 mb-2">Activities</h1>
+        <p className="text-green-600">Mindful exercises and fun challenges to relax and recharge</p>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <Card className="bg-white/30 backdrop-blur-sm border-white/50">
+          <CardHeader>
+            <CardTitle className="text-green-800">Breathing Meditation</CardTitle>
+            <CardDescription className="text-green-700">Follow the blue water as you breathe in and out</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <BreathingMeditation />
+          </CardContent>
+        </Card>
+
+        <Card className="bg-white/30 backdrop-blur-sm border-white/50">
+          <CardHeader>
+            <CardTitle className="text-green-800">Brain Teasers</CardTitle>
+            <CardDescription className="text-green-700">Short puzzles to shift focus and spark joy</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <ul className="list-disc pl-5 space-y-2 text-green-800">
+              <li>Word Ladder: Change CALM to PEACE in 4 steps.</li>
+              <li>Riddle: What has many keys but cant open a door?</li>
+              <li>Observation: Find 5 green objects around you.</li>
+            </ul>
+            <p className="text-xs text-green-600 mt-3">Tip: Keep it light—these are for gentle engagement, not pressure.</p>
+          </CardContent>
+        </Card>
+      </div>
+    </div>
+  )
