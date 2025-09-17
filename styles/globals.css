@@ -123,3 +123,54 @@
     @apply bg-background text-foreground;
   }
 }
+
+
+/* Mindspace custom palette and background */
+:root {
+  --ms-bg: #FDFAF6;
+  --ms-paper: #FAF1E6;
+  --ms-tint: #E4EFE7;
+  --ms-primary: #99BC85;
+  --ms-primary-700: #86A976;
+  --ms-primary-800: #6D8F5B;
+  --ms-border-200: #D6E6DA;
+  --ms-border-300: #C5DBC9;
+
+  /* Map to design tokens */
+  --background: var(--ms-bg);
+  --foreground: #28372A;
+  --card: #FFFFFF;
+  --card-foreground: #28372A;
+  --popover: #FFFFFF;
+  --popover-foreground: #28372A;
+  --primary: var(--ms-primary);
+  --primary-foreground: var(--ms-bg);
+  --secondary: var(--ms-tint);
+  --secondary-foreground: #28372A;
+  --muted: var(--ms-tint);
+  --muted-foreground: var(--ms-primary-800);
+  --accent: var(--ms-tint);
+  --accent-foreground: #28372A;
+  --destructive: #ef4444;
+  --destructive-foreground: #ffffff;
+  --border: var(--ms-tint);
+  --input: var(--ms-tint);
+  --ring: var(--ms-primary);
+  --chart-1: #99BC85;
+  --chart-2: #E4EFE7;
+  --chart-3: #FAF1E6;
+  --chart-4: #86A976;
+  --chart-5: #6D8F5B;
+  --radius: 1rem;
+}
+
+@layer base {
+  body {
+    background-color: var(--background);
+    background-image:
+      radial-gradient(60rem 60rem at -10% -10%, var(--ms-paper) 0%, transparent 60%),
+      radial-gradient(60rem 60rem at 110% -10%, var(--ms-tint) 0%, transparent 60%),
+      radial-gradient(60rem 60rem at 50% 120%, var(--ms-paper) 0%, transparent 60%);
+    background-attachment: fixed;
+  }
+}
