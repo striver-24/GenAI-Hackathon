@@ -7,9 +7,10 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { Textarea } from "@/components/ui/textarea"
 import { RatingCircles } from "@/components/RatingCircles"
 import BreathingMeditation from "@/components/BreathingMeditation"
-import { AlertTriangle, Heart, MessageCircle, BookOpen, Home, Phone, TrendingUp, Calendar, Smile, Activity, ScrollText } from "lucide-react"
+import { AlertTriangle, Heart, MessageCircle, BookOpen, Home, Phone, TrendingUp, Calendar, Smile, Activity, ScrollText, Flame, Quote } from "lucide-react"
 
 type Page = "welcome" | "auth" | "dashboard" | "chat" | "articles" | "stories" | "activities"
 
@@ -195,6 +196,38 @@ export default function MindspaceApp() {
   const getAverageMood = () => {
     if (moodHistory.length === 0) return 0
     return Math.round(moodHistory.reduce((sum, entry) => sum + entry.mood, 0) / moodHistory.length)
+  }
+
+  // Calculate consecutive daily streak including today
+  const calculateStreak = () => {
+    const toIso = (dt: Date) => dt.toISOString().split("T")[0]
+    const dates = new Set(moodHistory.map((e) => e.date))
+    let streak = 0
+    const d = new Date()
+    while (dates.has(toIso(d))) {
+      streak++
+      d.setDate(d.getDate() - 1)
+    }
+    return streak
+  }
+
+  // Motivational quotes related to mental health
+  const MOTIVATION_QUOTES: string[] = [
+    "Small steps every day lead to big changes.",
+    "Your feelings are valid. It’s okay to take it slow.",
+    "Breathe. You’ve handled hard things before.",
+    "Progress, not perfection.",
+    "Rest is productive.",
+    "You are not your thoughts; you are the observer of them.",
+    "One day at a time.",
+    "Self-kindness is a superpower.",
+    "Asking for help is a sign of strength.",
+    "You’re doing better than you think."
+  ]
+
+  const getQuoteOfTheDay = () => {
+    const dayIndex = Math.floor(new Date().getTime() / (1000 * 60 * 60 * 24))
+    return MOTIVATION_QUOTES[dayIndex % MOTIVATION_QUOTES.length]
   }
 
   const Navbar = () => (
@@ -452,6 +485,16 @@ export default function MindspaceApp() {
             <CardDescription>
               {quizCompleted ? "Great job! You've completed today's check-in." : "How are you feeling today?"}
             </CardDescription>
+            <div className="mt-2 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+              <div className="inline-flex items-center gap-2 rounded-full bg-orange-50 text-orange-700 px-3 py-1 text-xs font-medium border border-orange-200 w-fit">
+                <Flame className="h-4 w-4 text-orange-600" />
+                <span>{calculateStreak()} day{calculateStreak() === 1 ? "" : "s"} streak</span>
+              </div>
+              <div className="flex items-start gap-2 text-sm text-green-800 bg-green-50 border border-green-200 rounded-md p-2">
+                <Quote className="h-4 w-4 text-green-600 mt-0.5" />
+                <span>{getQuoteOfTheDay()}</span>
+              </div>
+            </div>
           </CardHeader>
           <CardContent className="space-y-6">
             {!quizCompleted ? (
