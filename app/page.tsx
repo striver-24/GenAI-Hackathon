@@ -57,29 +57,38 @@ export default function MindspaceApp() {
     const [isLoggedIn, setIsLoggedIn] = useState(false)
     const [showEmergencyModal, setShowEmergencyModal] = useState(false)
     const [authMode, setAuthMode] = useState<"signin" | "signup">("signin")
+    const [canShowAppNav, setCanShowAppNav] = useState(false)
+    const [storyLoading, setStoryLoading] = useState(false)
+    const [storyData, setStoryData] = useState<{ title: string; story: string } | null>(null)
 
     const { data: session } = useSession()
     useEffect(() => {
         setIsLoggedIn(!!session)
         if (session) {
+            setCanShowAppNav(false)
             ;(async () => {
                 try {
                     const res = await fetch('/api/profile', { cache: 'no-store' })
                     if (res.ok) {
                         const data = await res.json()
                         if (!data?.profile || !data?.profile?.termsAccepted) {
+                            setCanShowAppNav(false)
                             window.location.href = '/profile'
                         } else {
+                            setCanShowAppNav(true)
                             setCurrentPage('dashboard')
                         }
                     } else {
+                        setCanShowAppNav(false)
                         setCurrentPage('dashboard')
                     }
                 } catch (e) {
+                    setCanShowAppNav(false)
                     setCurrentPage('dashboard')
                 }
             })()
         } else {
+            setCanShowAppNav(false)
             setCurrentPage('welcome')
         }
     }, [session])
@@ -196,7 +205,7 @@ export default function MindspaceApp() {
         setCurrentPage("dashboard")
     }
 
-    const handleQuizSubmit = () => {
+    const handleQuizSubmit = async () => {
         const today = new Date().toISOString().split("T")[0]
         const newEntry: MoodEntry = {
             date: today,
@@ -210,21 +219,65 @@ export default function MindspaceApp() {
             return [...filtered, newEntry].sort((a, b) => a.date.localeCompare(b.date))
         })
         setQuizCompleted(true)
+        // Generate a personalized story using Gemini
+        setStoryData(null)
+        setStoryLoading(true)
+        try {
+            let scenarioPrompt = ""
+            if (todayQuiz.stress >= 7) {
+                scenarioPrompt = "The user is a young person feeling immense pressure and anxiety. They feel overwhelmed, tense, and their mind is always racing with worries about the future. Their struggle feels like being caught in a relentless storm."
+            } else if (todayQuiz.mood <= 3) {
+                scenarioPrompt = "The user is a young person experiencing a persistent low mood and a loss of joy. They feel disconnected, isolated, and lonely, as if the world's color has faded to grey and they are invisible to everyone."
+            } else if (todayQuiz.energy <= 3) {
+                scenarioPrompt = "The user is a young person feeling completely drained of energy, both mentally and physically. Daily tasks feel like monumental efforts, and they feel stuck in a state of deep exhaustion, like they are trying to walk through thick mud."
+            } else {
+                scenarioPrompt = "The user is a young person going through a very difficult time with a mix of sadness, stress, and exhaustion. They feel lost, overwhelmed, and isolated, and their energy is too low to see a clear path forward. It feels like they are lost in a cold, dense fog on a steep mountain."
+            }
+            const res = await fetch('/api/story', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ scenarioPrompt })
+            })
+            if (res.ok) {
+                const data = await res.json()
+                if (data?.title || data?.story) {
+                    setStoryData({ title: data.title || 'A Gentle Story', story: data.story || '' })
+                }
+            }
+        } catch (e) {
+            // Silent fail; keep UX smooth
+        } finally {
+            setStoryLoading(false)
+        }
     }
 
-    const handleSendMessage = () => {
+    const handleSendMessage = async () => {
         if (!currentMessage.trim()) return
         const userMessage: ChatMessage = { id: Date.now().toString(), content: currentMessage, sender: "user", timestamp: new Date() }
         setChatMessages((prev) => [...prev, userMessage])
         setCurrentMessage("")
         setIsAiTyping(true)
-        setTimeout(() => {
-            const aiResponses = ["I understand how you're feeling. It's completely normal to have ups and downs. Would you like to talk more about what's on your mind?", "Thank you for sharing that with me. Your feelings are valid, and I'm here to support you through this.", "That sounds challenging. Remember that seeking help is a sign of strength, not weakness. How can I best support you right now?", "I hear you. Sometimes it helps to take things one step at a time. What's one small thing that might make you feel a bit better today?", "Your mental health matters, and so do you. Have you tried any relaxation techniques that work for you?", "It's okay to not be okay sometimes. What usually helps you feel more grounded when you're going through difficult times?"]
-            const randomResponse = aiResponses[Math.floor(Math.random() * aiResponses.length)]
-            const aiMessage: ChatMessage = { id: (Date.now() + 1).toString(), content: randomResponse, sender: "ai", timestamp: new Date() }
+        try {
+            const historyPayload = [...chatMessages, userMessage]
+                .slice(-10)
+                .map((m) => ({ sender: m.sender, content: m.content }))
+            const res = await fetch('/api/chat', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ message: userMessage.content, history: historyPayload })
+            })
+            if (!res.ok) throw new Error('Chat API error')
+            const data = await res.json()
+            const replyText: string = data?.reply || "I'm here with you. Would you like to share a bit more about how you're feeling right now?"
+            const aiMessage: ChatMessage = { id: (Date.now() + 1).toString(), content: replyText, sender: "ai", timestamp: new Date() }
             setChatMessages((prev) => [...prev, aiMessage])
+        } catch (e) {
+            const fallback = "I'm here with you. Perhaps take three slow breaths with me. What feels heaviest right now?"
+            const aiMessage: ChatMessage = { id: (Date.now() + 1).toString(), content: fallback, sender: "ai", timestamp: new Date() }
+            setChatMessages((prev) => [...prev, aiMessage])
+        } finally {
             setIsAiTyping(false)
-        }, 1500 + Math.random() * 1000)
+        }
     }
 
     // --- UTILITY FUNCTIONS ---
@@ -246,7 +299,7 @@ export default function MindspaceApp() {
         switch (currentPage) {
             case "welcome": return <WelcomePage setCurrentPage={setCurrentPage} />
             case "auth": return <AuthPage authMode={authMode} setAuthMode={setAuthMode} handleAuth={handleAuth} />
-            case "dashboard": return <DashboardPage todayQuiz={todayQuiz} setTodayQuiz={setTodayQuiz} quizCompleted={quizCompleted} setQuizCompleted={setQuizCompleted} handleQuizSubmit={handleQuizSubmit} moodHistory={moodHistory} getMoodEmoji={getMoodEmoji} getAverageMood={getAverageMood} calculateStreak={calculateStreak} getQuoteOfTheDay={getQuoteOfTheDay} />
+            case "dashboard": return <DashboardPage todayQuiz={todayQuiz} setTodayQuiz={setTodayQuiz} quizCompleted={quizCompleted} setQuizCompleted={setQuizCompleted} handleQuizSubmit={handleQuizSubmit} moodHistory={moodHistory} getMoodEmoji={getMoodEmoji} getAverageMood={getAverageMood} calculateStreak={calculateStreak} getQuoteOfTheDay={getQuoteOfTheDay} storyLoading={storyLoading} storyData={storyData} />
             case "chat": return <ChatPage chatMessages={chatMessages} isAiTyping={isAiTyping} currentMessage={currentMessage} setCurrentMessage={setCurrentMessage} handleSendMessage={handleSendMessage} />
             case "articles": return <ArticlesPage articles={articles} categories={categories} filteredArticles={filteredArticles} selectedCategory={selectedCategory} setSelectedCategory={setSelectedCategory} selectedArticle={selectedArticle} setSelectedArticle={setSelectedArticle} setCurrentPage={setCurrentPage} setShowEmergencyModal={setShowEmergencyModal} />
             case "stories": return <StoriesPage />
@@ -257,7 +310,7 @@ export default function MindspaceApp() {
 
     return (
         <div className="min-h-screen bg-gradient-to-br from-emerald-100 via-green-50 to-lime-200 flex flex-col">
-            <Navbar isLoggedIn={isLoggedIn} currentPage={currentPage} setCurrentPage={setCurrentPage} setIsLoggedIn={setIsLoggedIn} setShowEmergencyModal={setShowEmergencyModal} />
+            <Navbar isLoggedIn={isLoggedIn} canShowAppNav={canShowAppNav} currentPage={currentPage} setCurrentPage={setCurrentPage} setIsLoggedIn={setIsLoggedIn} setShowEmergencyModal={setShowEmergencyModal} />
             <main className="flex-1">{renderCurrentPage()}</main>
             <Footer setShowEmergencyModal={setShowEmergencyModal} />
             <EmergencyModal showEmergencyModal={showEmergencyModal} setShowEmergencyModal={setShowEmergencyModal} emergencyContacts={emergencyContacts} />
@@ -267,7 +320,7 @@ export default function MindspaceApp() {
 
 // --- EXTRACTED COMPONENTS ---
 
-const Navbar = ({ isLoggedIn, currentPage, setCurrentPage, setIsLoggedIn, setShowEmergencyModal }) => (
+const Navbar = ({ isLoggedIn, canShowAppNav, currentPage, setCurrentPage, setIsLoggedIn, setShowEmergencyModal }) => (
     <nav className="fixed z-50 inset-x-0 top-3 flex justify-center animate-in fade-in slide-in-from-top-2">
         <div className="w-[95%] sm:w-[90%] md:max-w-5xl lg:max-w-6xl">
             <div className={`rounded-full px-3 sm:px-4 ${isLoggedIn ? "py-3 border border-white/30 bg-[#FDFAF6]/70 backdrop-blur-xl shadow-lg" : "py-2 bg-white"} flex items-center justify-between`}>
@@ -275,7 +328,7 @@ const Navbar = ({ isLoggedIn, currentPage, setCurrentPage, setIsLoggedIn, setSho
                     <img src="/mindspacelogo.png" alt="Mindspace" className="h-7 w-7 sm:h-8 sm:w-8 rounded-md" />
                     <span className="hidden sm:inline text-base sm:text-lg font-semibold text-[#99BC85] tracking-wide">Mindspace</span>
                 </div>
-                {isLoggedIn && (
+                {isLoggedIn && canShowAppNav && (
                     <div className="hidden md:flex items-center gap-2 md:gap-3">
                         <Button variant={currentPage === "dashboard" ? "default" : "ghost"} onClick={() => setCurrentPage("dashboard")} className="rounded-full px-4"><Home className="h-4 w-4 mr-2" /> Dashboard</Button>
                         <Button variant={currentPage === "chat" ? "default" : "ghost"} onClick={() => setCurrentPage("chat")} className="rounded-full px-4"><MessageCircle className="h-4 w-4 mr-2" /> Chat</Button>
@@ -389,7 +442,7 @@ const AuthPage = ({ authMode, setAuthMode, handleAuth }) => (
     </div>
 )
 
-const DashboardPage = ({ todayQuiz, setTodayQuiz, quizCompleted, setQuizCompleted, handleQuizSubmit, moodHistory, getMoodEmoji, getAverageMood, calculateStreak, getQuoteOfTheDay }) => (
+const DashboardPage = ({ todayQuiz, setTodayQuiz, quizCompleted, setQuizCompleted, handleQuizSubmit, moodHistory, getMoodEmoji, getAverageMood, calculateStreak, getQuoteOfTheDay, storyLoading, storyData }) => (
     <div className="pt-20 pb-8 px-4 max-w-6xl mx-auto">
         <div className="mb-8"><h1 className="text-3xl font-bold text-green-800 mb-2">Your Wellness Dashboard</h1><p className="text-green-600">Track your mental wellness journey and daily progress</p></div>
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
@@ -434,6 +487,26 @@ const DashboardPage = ({ todayQuiz, setTodayQuiz, quizCompleted, setQuizComplete
                 </div>
             </CardContent>
         </Card>
+        {quizCompleted && (
+            <Card className="mt-6 bg-white/30 backdrop-blur-sm border-white/50">
+                <CardHeader>
+                    <CardTitle className="flex items-center space-x-2"><ScrollText className="h-5 w-5 text-green-600" /><span>Your Gentle Story</span></CardTitle>
+                    <CardDescription>Created for you based on today’s check-in</CardDescription>
+                </CardHeader>
+                <CardContent>
+                    {storyLoading ? (
+                        <div className="text-sm text-green-700">Generating your story...</div>
+                    ) : storyData ? (
+                        <div>
+                            <h3 className="text-lg font-semibold text-green-800 mb-2">{storyData.title}</h3>
+                            <p className="text-green-700 leading-relaxed whitespace-pre-wrap">{storyData.story}</p>
+                        </div>
+                    ) : (
+                        <div className="text-sm text-green-700">Your story will appear here after you complete the check-in.</div>
+                    )}
+                </CardContent>
+            </Card>
+        )}
     </div>
 )
 
