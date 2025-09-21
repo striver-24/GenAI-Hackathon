@@ -61,6 +61,27 @@ export default function MindspaceApp() {
     const { data: session } = useSession()
     useEffect(() => {
         setIsLoggedIn(!!session)
+        if (session) {
+            ;(async () => {
+                try {
+                    const res = await fetch('/api/profile', { cache: 'no-store' })
+                    if (res.ok) {
+                        const data = await res.json()
+                        if (!data?.profile || !data?.profile?.termsAccepted) {
+                            window.location.href = '/profile'
+                        } else {
+                            setCurrentPage('dashboard')
+                        }
+                    } else {
+                        setCurrentPage('dashboard')
+                    }
+                } catch (e) {
+                    setCurrentPage('dashboard')
+                }
+            })()
+        } else {
+            setCurrentPage('welcome')
+        }
     }, [session])
 
     const [moodHistory, setMoodHistory] = useState<MoodEntry[]>([
@@ -235,7 +256,7 @@ export default function MindspaceApp() {
     }
 
     return (
-        <div className="min-h-screen bg-gradient-to-br from-green-100 via-lime-50 to-green-200 flex flex-col">
+        <div className="min-h-screen bg-gradient-to-br from-emerald-100 via-green-50 to-lime-200 flex flex-col">
             <Navbar isLoggedIn={isLoggedIn} currentPage={currentPage} setCurrentPage={setCurrentPage} setIsLoggedIn={setIsLoggedIn} setShowEmergencyModal={setShowEmergencyModal} />
             <main className="flex-1">{renderCurrentPage()}</main>
             <Footer setShowEmergencyModal={setShowEmergencyModal} />
@@ -248,24 +269,23 @@ export default function MindspaceApp() {
 
 const Navbar = ({ isLoggedIn, currentPage, setCurrentPage, setIsLoggedIn, setShowEmergencyModal }) => (
     <nav className="fixed z-50 inset-x-0 top-3 flex justify-center animate-in fade-in slide-in-from-top-2">
-        <div className="w-[95%] sm:w-[90%] md:max-w-4xl lg:max-w-5xl">
-            <div className="rounded-full border border-white/30 bg-[#FDFAF6]/70 backdrop-blur-xl shadow-lg px-3 sm:px-4 py-2 flex items-center justify-between">
+        <div className="w-[95%] sm:w-[90%] md:max-w-5xl lg:max-w-6xl">
+            <div className={`rounded-full px-3 sm:px-4 ${isLoggedIn ? "py-3 border border-white/30 bg-[#FDFAF6]/70 backdrop-blur-xl shadow-lg" : "py-2 bg-white"} flex items-center justify-between`}>
                 <div className="flex items-center gap-2 sm:gap-3">
                     <img src="/mindspacelogo.png" alt="Mindspace" className="h-7 w-7 sm:h-8 sm:w-8 rounded-md" />
                     <span className="hidden sm:inline text-base sm:text-lg font-semibold text-[#99BC85] tracking-wide">Mindspace</span>
                 </div>
                 {isLoggedIn && (
-                    <div className="hidden md:flex items-center gap-1">
-                        <Button variant={currentPage === "dashboard" ? "default" : "ghost"} onClick={() => setCurrentPage("dashboard")} className="rounded-full"><Home className="h-4 w-4 mr-2" /> Dashboard</Button>
-                        <Button variant={currentPage === "chat" ? "default" : "ghost"} onClick={() => setCurrentPage("chat")} className="rounded-full"><MessageCircle className="h-4 w-4 mr-2" /> Chat</Button>
-                        <Button variant={currentPage === "articles" ? "default" : "ghost"} onClick={() => setCurrentPage("articles")} className="rounded-full"><BookOpen className="h-4 w-4 mr-2" /> Articles</Button>
-                        <Button variant={currentPage === "stories" ? "default" : "ghost"} onClick={() => setCurrentPage("stories")} className="rounded-full"><ScrollText className="h-4 w-4 mr-2" /> Stories</Button>
-                        <Button variant={currentPage === "activities" ? "default" : "ghost"} onClick={() => setCurrentPage("activities")} className="rounded-full"><Activity className="h-4 w-4 mr-2" /> Activities</Button>
-                        <Button variant="ghost" className="rounded-full" asChild><a href="/know-yourself"><Smile className="h-4 w-4 mr-2" /> Know Yourself</a></Button>
+                    <div className="hidden md:flex items-center gap-2 md:gap-3">
+                        <Button variant={currentPage === "dashboard" ? "default" : "ghost"} onClick={() => setCurrentPage("dashboard")} className="rounded-full px-4"><Home className="h-4 w-4 mr-2" /> Dashboard</Button>
+                        <Button variant={currentPage === "chat" ? "default" : "ghost"} onClick={() => setCurrentPage("chat")} className="rounded-full px-4"><MessageCircle className="h-4 w-4 mr-2" /> Chat</Button>
+                        <Button variant={currentPage === "articles" ? "default" : "ghost"} onClick={() => setCurrentPage("articles")} className="rounded-full px-4"><BookOpen className="h-4 w-4 mr-2" /> Articles</Button>
+                        <Button variant={currentPage === "stories" ? "default" : "ghost"} onClick={() => setCurrentPage("stories")} className="rounded-full px-4"><ScrollText className="h-4 w-4 mr-2" /> Stories</Button>
+                        <Button variant={currentPage === "activities" ? "default" : "ghost"} onClick={() => setCurrentPage("activities")} className="rounded-full px-4"><Activity className="h-4 w-4 mr-2" /> Activities</Button>
+                        <Button variant="ghost" className="rounded-full px-4" asChild><a href="/know-yourself"><Smile className="h-4 w-4 mr-2" /> Know Yourself</a></Button>
                     </div>
                 )}
                 <div className="flex items-center gap-2 sm:gap-3">
-                    <Button onClick={() => setShowEmergencyModal(true)} className="rounded-full bg-[#ff6b6b] hover:bg-[#e85d5d] text-white"><AlertTriangle className="h-4 w-4 mr-1.5" /> <span className="hidden sm:inline">Emergency</span></Button>
                     {isLoggedIn ? (
                         <DropdownMenu>
                             <DropdownMenuTrigger asChild>
@@ -301,23 +321,27 @@ const Navbar = ({ isLoggedIn, currentPage, setCurrentPage, setIsLoggedIn, setSho
 )
 
 const Footer = ({ setShowEmergencyModal }) => (
-    <footer className="bg-transparent mt-auto">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <footer className="bg-white mt-auto">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 text-[#2f6a3a]">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-8 items-start">
                 <div>
-                    <div className="flex items-center gap-3 mb-4"><img src="/mindspacelogo.png" alt="Mindspace" className="h-7 w-7 rounded-md" /><span className="text-lg font-semibold text-[#6D8F5B]">Mindspace</span></div>
-                    <p className="text-sm text-[#4b5a4d]">Your safe space for mental wellness and growth.</p>
+                    <div className="flex items-center gap-3 mb-4"><img src="/mindspacelogo.png" alt="Mindspace" className="h-7 w-7 rounded-md" /><span className="text-lg font-semibold">Mindspace</span></div>
+                    <p className="text-sm opacity-90">Your safe space for mental wellness and growth.</p>
                 </div>
                 <div>
-                    <h3 className="font-semibold text-[#6D8F5B] mb-4">Quick Links</h3>
-                    <div className="space-y-2 text-sm"><button className="block text-[#4b5a4d] hover:text-[#86A976]">Terms & Conditions</button><button className="block text-[#4b5a4d] hover:text-[#86A976]">Privacy Policy</button><button className="block text-[#4b5a4d] hover:text-[#86A976]">About Us</button></div>
+                    <h3 className="font-semibold mb-4">Quick Links</h3>
+                    <div className="space-y-2 text-sm">
+                        <button className="block hover:text-[#86A976]">Terms & Conditions</button>
+                        <button className="block hover:text-[#86A976]">Privacy Policy</button>
+                        <button className="block hover:text-[#86A976]">About Us</button>
+                    </div>
                 </div>
                 <div>
-                    <h3 className="font-semibold text-[#6D8F5B] mb-4">Emergency Support</h3>
+                    <h3 className="font-semibold mb-4">Emergency Support</h3>
                     <Button onClick={() => setShowEmergencyModal(true)} className="bg-[#ff6b6b] hover:bg-[#e85d5d] text-white w-full flex items-center justify-center gap-2 rounded-full"><Phone className="h-4 w-4" /><span>Get Help Now</span></Button>
                 </div>
             </div>
-            <div className="border-t border-[#E4EFE7] mt-8 pt-8 text-center text-sm text-[#4b5a4d]"><p>&copy; {new Date().getFullYear()} Mindspace. All rights reserved. Made with ❤️ for mental wellness.</p></div>
+            <div className="border-t border-[#E4EFE7] mt-8 pt-8 text-center text-sm opacity-90"><p>&copy; {new Date().getFullYear()} Mindspace. All rights reserved. Made with ❤️ for mental wellness.</p></div>
         </div>
     </footer>
 )
@@ -339,9 +363,9 @@ const WelcomePage = ({ setCurrentPage }) => (
         <div className="max-w-4xl mx-auto text-center">
             <div className="mb-8"><Heart className="h-20 w-20 text-green-600 mx-auto mb-6" /><h1 className="text-5xl md:text-6xl font-bold text-green-800 mb-6">Welcome to Mindspace</h1><p className="text-xl md:text-2xl text-green-700 mb-8 max-w-2xl mx-auto">Your safe, confidential space for mental wellness. Connect with AI-powered support designed specifically for Indian youth.</p></div>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">
-                <Card className="bg-white/30 backdrop-blur-sm border-white/50"><CardContent className="p-6 text-center"><MessageCircle className="h-12 w-12 text-green-600 mx-auto mb-4" /><h3 className="text-lg font-semibold text-green-800 mb-2">AI Companion</h3><p className="text-green-700">Chat with our empathetic AI for 24/7 support</p></CardContent></Card>
-                <Card className="bg-white/30 backdrop-blur-sm border-white/50"><CardContent className="p-6 text-center"><Heart className="h-12 w-12 text-green-600 mx-auto mb-4" /><h3 className="text-lg font-semibold text-green-800 mb-2">Mood Tracking</h3><p className="text-green-700">Monitor your emotional journey with daily check-ins</p></CardContent></Card>
-                <Card className="bg-white/30 backdrop-blur-sm border-white/50"><CardContent className="p-6 text-center"><BookOpen className="h-12 w-12 text-green-600 mx-auto mb-4" /><h3 className="text-lg font-semibold text-green-800 mb-2">Wellness Articles</h3><p className="text-green-700">Access curated content for mental health awareness</p></CardContent></Card>
+                <Card className="bg-white/40 backdrop-blur-sm border-white/50 transition-transform duration-300 hover:scale-105 hover:shadow-xl"><CardContent className="p-6 text-center"><MessageCircle className="h-12 w-12 text-green-600 mx-auto mb-4" /><h3 className="text-lg font-semibold text-green-800 mb-2">AI Companion</h3><p className="text-green-700">Chat with our empathetic AI for 24/7 support</p></CardContent></Card>
+                <Card className="bg-white/40 backdrop-blur-sm border-white/50 transition-transform duration-300 hover:scale-105 hover:shadow-xl"><CardContent className="p-6 text-center"><Heart className="h-12 w-12 text-green-600 mx-auto mb-4" /><h3 className="text-lg font-semibold text-green-800 mb-2">Mood Tracking</h3><p className="text-green-700">Monitor your emotional journey with daily check-ins</p></CardContent></Card>
+                <Card className="bg-white/40 backdrop-blur-sm border-white/50 transition-transform duration-300 hover:scale-105 hover:shadow-xl"><CardContent className="p-6 text-center"><BookOpen className="h-12 w-12 text-green-600 mx-auto mb-4" /><h3 className="text-lg font-semibold text-green-800 mb-2">Wellness Articles</h3><p className="text-green-700">Access curated content for mental health awareness</p></CardContent></Card>
             </div>
             <Button onClick={() => signIn('google')} size="lg" className="bg-[#99BC85] hover:bg-[#86A976] text-white px-8 py-4 text-lg rounded-full shadow-md">Get Started with Google</Button>
         </div>

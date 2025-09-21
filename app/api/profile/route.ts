@@ -25,6 +25,13 @@ export async function GET() {
     }
     return NextResponse.json({ profile: { id: userId, ...(doc.data() as any) } })
   } catch (e: any) {
+    // Gracefully handle Firestore NOT_FOUND errors (e.g., missing project/db in local dev)
+    const code = e?.code
+    const msg = e?.message || ""
+    if (code === 5 || msg.includes("NOT_FOUND")) {
+      // Treat as no profile rather than a server error
+      return NextResponse.json({ profile: null })
+    }
     console.error("GET /api/profile error", e)
     return NextResponse.json({ error: e?.message || "Failed to load profile" }, { status: 500 })
   }

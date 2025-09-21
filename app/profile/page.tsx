@@ -74,6 +74,10 @@ export default function ProfilePage() {
       setIsNew(false)
       if (data?.profile) {
         setTermsAccepted(!!data.profile.termsAccepted)
+        // If profile has T&C accepted (new user just completed), go to dashboard via home
+        if (data.profile.termsAccepted) {
+          window.location.href = '/'
+        }
       }
     } catch (e: any) {
       setError(e?.message || 'Failed to save')
