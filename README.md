@@ -76,7 +76,7 @@ pnpm start
 ```
 
 ## Configuration
-This app now integrates Google OAuth (NextAuth), Vertex AI (Gemini), and Firestore.
+This app now integrates Google OAuth (NextAuth), Gemini (Direct API), and Firestore.
 
 Required environment variables (create .env.local):
 
@@ -121,3 +121,23 @@ This project currently has no explicit license. Add one if you plan to share or 
 - Next.js team for the framework
 - Radix UI and shadcn/ui for component patterns
 - Open-source community for libraries used in this project
+
+
+## Gemini Setup (Direct API)
+You can generate stories with Gemini without using VertexAI server SDK.
+
+1. Create a Gemini API key:
+   - Visit https://ai.google.dev and create an API key (Google AI Studio).
+2. Configure environment:
+   - In your .env.local, set:
+     GEMINI_API_KEY=your_api_key
+     # Optional to override default model
+     # GEMINI_MODEL=gemini-1.5-flash-002
+3. Usage in this app:
+   - The /api/story endpoint now uses the Google Generative AI SDK (@google/generative-ai).
+   - Default model: gemini-1.5-flash-002
+   - If you are signed in, generated stories are stored in Firestore.
+
+Notes:
+- VertexAI project/location variables are no longer required for story generation, but Firestore still needs your GCP project set (GOOGLE_CLOUD_PROJECT or GCLOUD_PROJECT) and credentials for server-side access.
+- If GEMINI_API_KEY is missing, the endpoint returns HTTP 500 with a clear error message.

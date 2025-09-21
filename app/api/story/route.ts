@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server"
-import { VertexAI } from "@google-cloud/vertexai"
+import { GoogleGenerativeAI } from "@google/generative-ai"
 import { getFirestore } from "@/lib/firestore"
 import { FieldValue } from "@google-cloud/firestore"
 import { getServerSession } from "next-auth"
@@ -37,46 +37,59 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Missing scenarioPrompt" }, { status: 400 })
     }
 
-    const project = process.env.GOOGLE_CLOUD_PROJECT || process.env.GCLOUD_PROJECT
-    const location = process.env.VERTEX_LOCATION || "us-central1"
-    if (!project) {
-      return NextResponse.json({ error: "Missing GOOGLE_CLOUD_PROJECT/GCLOUD_PROJECT env" }, { status: 500 })
+    const apiKey = process.env.GEMINI_API_KEY
+    const modelName = process.env.GEMINI_MODEL || "gemini-1.5-flash-002"
+    if (!apiKey) {
+      return NextResponse.json({ error: "Missing GEMINI_API_KEY env" }, { status: 500 })
     }
 
-    const vertex = new VertexAI({ project, location })
-    const model = vertex.getGenerativeModel({
-      model: "gemini-1.5-flash-002",
-      generationConfig: {
-        temperature: 0.8,
-        maxOutputTokens: 1000,
-        responseMimeType: "application/json",
-      },
-      safetySettings: [
-        { category: "HARM_CATEGORY_DANGEROUS_CONTENT", threshold: "BLOCK_MEDIUM_AND_ABOVE" },
-        { category: "HARM_CATEGORY_HATE_SPEECH", threshold: "BLOCK_MEDIUM_AND_ABOVE" },
-        { category: "HARM_CATEGORY_HARASSMENT", threshold: "BLOCK_MEDIUM_AND_ABOVE" },
-        { category: "HARM_CATEGORY_SEXUALLY_EXPLICIT", threshold: "BLOCK_MEDIUM_AND_ABOVE" },
-        { category: "HARM_CATEGORY_SELF_HARM", threshold: "BLOCK_LOW_AND_ABOVE" },
-      ],
-    })
+    const genAI = new GoogleGenerativeAI(apiKey)
+    const model = genAI.getGenerativeModel({ model: modelName })
 
     const result = await model.generateContent({
       systemInstruction: { role: "system", parts: [{ text: SYSTEM_PROMPT + "\nKeep within 300-400 words." }] },
       contents: [
         { role: "user", parts: [{ text: scenarioPrompt }] },
       ],
+      generationConfig: { responseMimeType: "application/json" },
     })
 
-    const response = await result.response
-    const text = response.candidates?.[0]?.content?.parts?.[0]?.text || "{}"
+    const text = await result.response.text()
 
-    let parsed: { title?: string; story?: string }
-    try {
-      parsed = JSON.parse(text)
-    } catch {
-      // Fallback: if model returned plain text, synthesize a title
-      parsed = { title: "A Gentle Story", story: text }
+    function tryParseJson(raw: string): any | null {
+      try {
+        return JSON.parse(raw)
+      } catch {
+        return null
+      }
     }
+
+    function extractJson(raw: string): any | null {
+      // 1) Direct parse
+      let obj = tryParseJson(raw)
+      if (obj) return obj
+      // 2) Strip code fences
+      const fenceMatch = raw.match(/```[a-zA-Z]*\n([\s\S]*?)```/)
+      if (fenceMatch) {
+        obj = tryParseJson(fenceMatch[1].trim())
+        if (obj) return obj
+      }
+      // 3) Parse substring between first { and last }
+      const first = raw.indexOf("{")
+      const last = raw.lastIndexOf("}")
+      if (first !== -1 && last !== -1 && last > first) {
+        const sub = raw.slice(first, last + 1)
+        obj = tryParseJson(sub)
+        if (obj) return obj
+      }
+      return null
+    }
+
+    const parsedAny = extractJson(text)
+
+    const parsed: { title?: string; story?: string } = parsedAny && typeof parsedAny === 'object'
+      ? parsedAny
+      : { title: "A Gentle Story", story: text }
 
     const session = await getServerSession(authOptions)
     const userId = (session?.user as any)?.id || null

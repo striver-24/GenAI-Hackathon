@@ -1,7 +1,9 @@
 "use client"
 
 import type React from "react"
-import { useState } from "react"
+import { useState, useEffect } from "react"
+import { useSession, signIn, signOut } from "next-auth/react"
+import AuthButtons from "@/components/AuthButtons"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
@@ -55,6 +57,11 @@ export default function MindspaceApp() {
     const [isLoggedIn, setIsLoggedIn] = useState(false)
     const [showEmergencyModal, setShowEmergencyModal] = useState(false)
     const [authMode, setAuthMode] = useState<"signin" | "signup">("signin")
+
+    const { data: session } = useSession()
+    useEffect(() => {
+        setIsLoggedIn(!!session)
+    }, [session])
 
     const [moodHistory, setMoodHistory] = useState<MoodEntry[]>([
         { date: "2024-01-15", mood: 7, energy: 6, stress: 4, notes: "Good day overall" },
@@ -259,10 +266,34 @@ const Navbar = ({ isLoggedIn, currentPage, setCurrentPage, setIsLoggedIn, setSho
                 )}
                 <div className="flex items-center gap-2 sm:gap-3">
                     <Button onClick={() => setShowEmergencyModal(true)} className="rounded-full bg-[#ff6b6b] hover:bg-[#e85d5d] text-white"><AlertTriangle className="h-4 w-4 mr-1.5" /> <span className="hidden sm:inline">Emergency</span></Button>
-                    <DropdownMenu>
-                        <DropdownMenuTrigger asChild><button className="outline-none rounded-full ring-0"><Avatar className="size-8"><AvatarImage src="/mindspacelogo.png" alt="User" /><AvatarFallback>MS</AvatarFallback></Avatar></button></DropdownMenuTrigger>
-                        <DropdownMenuContent align="end" className="min-w-44 bg-[#FDFAF6]/90 backdrop-blur-xl border-[#E4EFE7]"><DropdownMenuLabel className="text-[#99BC85]">My Account</DropdownMenuLabel><DropdownMenuSeparator /><DropdownMenuItem onClick={() => setCurrentPage("dashboard")}> <User className="mr-2 h-4 w-4" /> Profile</DropdownMenuItem><DropdownMenuItem onClick={() => setCurrentPage("dashboard")}> <SettingsIcon className="mr-2 h-4 w-4" /> Settings</DropdownMenuItem><DropdownMenuSeparator /><DropdownMenuItem onClick={() => { setIsLoggedIn(false); setCurrentPage("welcome") }}> <LogOut className="mr-2 h-4 w-4" /> Logout</DropdownMenuItem></DropdownMenuContent>
-                    </DropdownMenu>
+                    {isLoggedIn ? (
+                        <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                                <button className="outline-none rounded-full ring-0">
+                                    <Avatar className="size-8">
+                                        <AvatarImage src="/mindspacelogo.png" alt="User" />
+                                        <AvatarFallback>MS</AvatarFallback>
+                                    </Avatar>
+                                </button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end" className="min-w-44 bg-[#FDFAF6]/90 backdrop-blur-xl border-[#E4EFE7]">
+                                <DropdownMenuLabel className="text-[#99BC85]">My Account</DropdownMenuLabel>
+                                <DropdownMenuSeparator />
+                                <DropdownMenuItem onClick={() => (window.location.href = "/profile")}>
+                                    <User className="mr-2 h-4 w-4" /> Profile
+                                </DropdownMenuItem>
+                                <DropdownMenuItem onClick={() => setCurrentPage("dashboard")}>
+                                    <SettingsIcon className="mr-2 h-4 w-4" /> Settings
+                                </DropdownMenuItem>
+                                <DropdownMenuSeparator />
+                                <DropdownMenuItem onClick={() => { signOut() }}>
+                                    <LogOut className="mr-2 h-4 w-4" /> Logout
+                                </DropdownMenuItem>
+                            </DropdownMenuContent>
+                        </DropdownMenu>
+                    ) : (
+                        <AuthButtons />
+                    )}
                 </div>
             </div>
         </div>
@@ -312,7 +343,7 @@ const WelcomePage = ({ setCurrentPage }) => (
                 <Card className="bg-white/30 backdrop-blur-sm border-white/50"><CardContent className="p-6 text-center"><Heart className="h-12 w-12 text-green-600 mx-auto mb-4" /><h3 className="text-lg font-semibold text-green-800 mb-2">Mood Tracking</h3><p className="text-green-700">Monitor your emotional journey with daily check-ins</p></CardContent></Card>
                 <Card className="bg-white/30 backdrop-blur-sm border-white/50"><CardContent className="p-6 text-center"><BookOpen className="h-12 w-12 text-green-600 mx-auto mb-4" /><h3 className="text-lg font-semibold text-green-800 mb-2">Wellness Articles</h3><p className="text-green-700">Access curated content for mental health awareness</p></CardContent></Card>
             </div>
-            <Button onClick={() => setCurrentPage("auth")} size="lg" className="bg-[#99BC85] hover:bg-[#86A976] text-white px-8 py-4 text-lg rounded-full shadow-md">Get Started</Button>
+            <Button onClick={() => signIn('google')} size="lg" className="bg-[#99BC85] hover:bg-[#86A976] text-white px-8 py-4 text-lg rounded-full shadow-md">Get Started with Google</Button>
         </div>
     </div>
 )
