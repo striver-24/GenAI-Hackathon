@@ -67,28 +67,41 @@ export default function MindspaceApp() {
 
     const { data: session } = useSession()
     useEffect(() => {
+        // Immediately update login state based on session
         setIsLoggedIn(!!session)
+        
         if (session) {
-            setCanShowAppNav(false)
+            // Show dashboard UI immediately to reduce perceived loading time
+            setCurrentPage('dashboard')
+            
+            // Then check profile in background
             ;(async () => {
                 try {
-                    const res = await fetch('/api/profile', { cache: 'no-store' })
+                    // Use absolute URL for API calls in production
+                    const baseUrl = process.env.NEXT_PUBLIC_VERCEL_URL 
+                        ? `https://${process.env.NEXT_PUBLIC_VERCEL_URL}` 
+                        : '';
+                    const res = await fetch(`${baseUrl}/api/profile`, { 
+                        cache: 'no-store',
+                        // Add credentials to ensure cookies are sent
+                        credentials: 'include'
+                    })
+                    
                     if (res.ok) {
                         const data = await res.json()
                         if (!data?.profile || !data?.profile?.termsAccepted) {
-                            setCanShowAppNav(false)
+                            // Redirect to profile only if terms not accepted
                             window.location.href = '/profile'
                         } else {
                             setCanShowAppNav(true)
-                            setCurrentPage('dashboard')
                         }
                     } else {
-                        setCanShowAppNav(false)
-                        setCurrentPage('dashboard')
+                        // Still show nav on error, better UX than blank screen
+                        setCanShowAppNav(true)
                     }
                 } catch (e) {
-                    setCanShowAppNav(false)
-                    setCurrentPage('dashboard')
+                    // Still show nav on error
+                    setCanShowAppNav(true)
                 }
             })()
         } else {
@@ -99,13 +112,18 @@ export default function MindspaceApp() {
 
     // Show onboarding quiz on first visit to dashboard if not completed
     useEffect(() => {
-        if (currentPage === 'dashboard') {
+        if (currentPage === 'dashboard' && isLoggedIn) {
             try {
                 const done = localStorage.getItem('hasCompletedOnboarding')
-                if (!done) setShowOnboardingQuiz(true)
+                if (!done) {
+                    // Small delay to ensure components are properly mounted
+                    setTimeout(() => {
+                        setShowOnboardingQuiz(true)
+                    }, 500)
+                }
             } catch {}
         }
-    }, [currentPage])
+    }, [currentPage, isLoggedIn])
 
     const [moodHistory, setMoodHistory] = useState<MoodEntry[]>([
         { date: "2024-01-15", mood: 7, energy: 6, stress: 4, notes: "Good day overall" },
@@ -255,6 +273,22 @@ export default function MindspaceApp() {
             stress: todayQuiz.stress,
             notes: `Grateful for: ${todayQuiz.gratitude}. Challenge: ${todayQuiz.challenge}`,
         }
+        
+        // Save check-in data to user's account
+        try {
+            const baseUrl = process.env.NEXT_PUBLIC_VERCEL_URL 
+                ? `https://${process.env.NEXT_PUBLIC_VERCEL_URL}` 
+                : '';
+            await fetch(`${baseUrl}/api/chat/checkin`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                credentials: 'include',
+                body: JSON.stringify(newEntry)
+            });
+        } catch (e) {
+            console.error("Failed to save check-in data", e);
+        }
+        
         setMoodHistory((prev) => {
             const filtered = prev.filter((entry) => entry.date !== today)
             return [...filtered, newEntry].sort((a, b) => a.date.localeCompare(b.date))

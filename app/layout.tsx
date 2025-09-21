@@ -5,6 +5,9 @@ import { Analytics } from '@vercel/analytics/next'
 import './globals.css'
 import Providers from './providers'
 
+// Force CSS to load properly in production
+export const dynamic = 'force-dynamic'
+
 export const metadata: Metadata = {
   title: 'v0 App',
   description: 'Created with v0',
