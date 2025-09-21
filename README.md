@@ -1,143 +1,142 @@
 # Mindspace App
 
-A Next.js 14 + React 18 application focused on mental wellness. It provides mood tracking, daily check-ins, guided breathing, an AI chat companion, and curated articles — designed to help users build healthier habits.
+Made by AgentXcel Team
 
-## Features
-- Welcome and Auth flow (Sign in / Sign up)
-- Dashboard with:
-  - Daily mood/energy/stress check-in
-  - Mood history overview
-  - Quick actions and insights
-- AI Chat companion to support wellness conversations
-- Guided Breathing Meditation component
-- Articles, Stories, and Activities sections
-- Emergency resources modal with important contacts
-- Modern UI built with Tailwind CSS and Radix UI components
+A Next.js 14 + React 18 application focused on mental wellness for Indian youth. It offers a gentle, privacy-first space to check in with yourself, track mood, chat with an empathetic AI companion, and read curated resources. After a short Mental Wellness Check‑in, the app generates a culturally grounded, metaphorical story to offer comfort and small coping steps.
 
-## Tech Stack
-- Next.js 14 (App Router)
-- React 18, TypeScript
-- Tailwind CSS 4
-- Radix UI, shadcn-inspired components
+## Table of Contents
+- [Project Title and Description](#mindspace-app)
+- [Screenshots](#screenshots)
+- [Installation](#installation)
+  - [Prerequisites](#prerequisites)
+  - [Clone and Install](#clone-and-install)
+  - [Environment Variables](#environment-variables)
+  - [Google Cloud Setup](#google-cloud-setup)
+- [Usage](#usage)
+- [Features](#features)
+- [Google Cloud Services Used](#google-cloud-services-used)
+- [Contributing](#contributing)
+- [License](#license)
+- [Credits and Acknowledgements](#credits-and-acknowledgements)
+- [Project Status](#project-status)
+- [Links](#links)
 
-## Getting Started
+## Screenshots
+(Add your screenshots/GIFs here from the public/ folder)
+
+- Dashboard with Daily Check‑in
+- Know Yourself page with latest insights and story
+- AI Companion chat
+
+## Installation
 
 ### Prerequisites
 - Node.js 18+ (LTS recommended)
-- npm (comes with Node) or pnpm
+- pnpm or npm
 
-### Installation
-Using npm:
+### Clone and Install
 ```bash
+# clone
+git clone <repository_url>
+cd "Mindspace App"
+
+# install deps (choose one)
+pnpm install
+# or
 npm install
 ```
 
-Or using pnpm:
-```bash
-pnpm install
+### Environment Variables
+Create a .env.local file in the project root and set the following:
+
 ```
-
-### Development
-Start the dev server at http://localhost:3000
-```bash
-npm run dev
-# or
-pnpm dev
-```
-
-### Lint
-```bash
-npm run lint
-# or
-pnpm lint
-```
-
-### Build & Run
-```bash
-npm run build
-npm start
-# or
-pnpm build
-pnpm start
-```
-
-## Project Structure
-```
-/ (repo root)
-├─ app/                # Next.js app router pages and layout
-├─ components/         # Reusable UI components (buttons, cards, etc.)
-├─ hooks/              # Custom React hooks
-├─ lib/                # Utilities and shared libraries
-├─ public/             # Static assets
-├─ styles/             # Global styles
-├─ next.config.mjs     # Next.js configuration
-├─ package.json        # Scripts and dependencies
-└─ tsconfig.json       # TypeScript configuration
-```
-
-## Configuration
-This app now integrates Google OAuth (NextAuth), Gemini (Direct API), and Firestore.
-
-Required environment variables (create .env.local):
-
+# NextAuth
 NEXTAUTH_URL=http://localhost:3000
 NEXTAUTH_SECRET=your_long_random_string
 GOOGLE_CLIENT_ID=your_google_oauth_client_id
 GOOGLE_CLIENT_SECRET=your_google_oauth_client_secret
 
-# Google Cloud / Vertex AI
+# Google AI (Gemini)
+GEMINI_API_KEY=your_gemini_api_key
+# Optional (defaults to gemini-1.5-flash-002)
+# GEMINI_MODEL=gemini-1.5-flash-002
+
+# Firestore / GCP project for server-side writes
 GOOGLE_CLOUD_PROJECT=your_gcp_project_id
 # or GCLOUD_PROJECT=your_gcp_project_id
-VERTEX_LOCATION=us-central1
-# Use Application Default Credentials in local/dev, or set a service account JSON:
+# For local dev, prefer ADC. Otherwise, point to a service account JSON:
 # GOOGLE_APPLICATION_CREDENTIALS=/absolute/path/to/service-account.json
+```
 
-Setup steps:
-1) Create a GCP project; enable APIs: Vertex AI API, Firestore API, IAM, Cloud Logging.
-2) Create OAuth 2.0 credentials in Google Cloud Console (or Google Cloud Platform > APIs & Services) and set authorized redirect URI: http://localhost:3000/api/auth/callback/google
-3) Firestore: in the same project, create a Firestore database (Native mode).
-4) Local dev credentials:
-   - EITHER run `gcloud auth application-default login` to set ADC (recommended),
-   - OR download a service account key with Firestore User/Client and Vertex AI User roles, and set GOOGLE_APPLICATION_CREDENTIALS.
-5) Install deps and run the app:
-   npm install
-   npm run dev
+### Google Cloud Setup
+1. Create or select a GCP project.
+2. Enable APIs: Firestore API (required). Gemini uses Google AI Studio API key and does not require enabling Vertex AI for this app flow.
+3. Firestore: Create a Firestore database (Native mode) in your project.
+4. Credentials for local dev (choose one):
+   - gcloud auth application-default login (recommended for local)
+   - or download a Service Account JSON with minimal roles (Datastore User / Firestore User) and set GOOGLE_APPLICATION_CREDENTIALS.
 
-Notes:
-- The “Know Yourself” page derives a scenario from your check-in and calls /api/story.
-- The /api/story endpoint prompts Gemini 1.5 Flash with a strict system prompt and returns {title, story}.
-- If signed in with Google, generated stories are stored in Firestore (collection: stories).
+## Usage
+Start the development server:
+```bash
+pnpm dev
+# or
+npm run dev
+```
+Then open http://localhost:3000
 
-## Scripts (from package.json)
-- dev: `next dev`
-- build: `next build`
-- start: `next start`
-- lint: `next lint`
+Key flows to try:
+- On first visit to Dashboard, complete the Mental Wellness Check‑in (12 questions). A personalized story is generated and saved locally; insights appear on the Know Yourself page.
+- Use AI Companion chat to talk through feelings; type a message and the AI will respond.
+- Explore Articles and Activities; try the Breathing Meditation.
+
+Build and run production locally:
+```bash
+pnpm build && pnpm start
+# or
+npm run build && npm start
+```
+
+## Features
+- Navbar and Footer across main pages
+- Know Yourself page with Interactive Wellbeing Explorer and latest Check‑in insights + story
+- First‑time onboarding quiz on Dashboard (12 Qs, options A–D) with empathetic observations and suggestions
+- AI‑generated metaphorical story (300–400 words) tailored to your current state
+- Mood tracking with daily check‑ins and simple history
+- AI Companion chat for supportive, stigma‑free conversations
+- Curated Articles, Stories, and Activities (including guided breathing)
+- Emergency support modal with key helpline numbers
+- Clean, responsive UI with Tailwind CSS and shadcn‑style components
+
+## Google Cloud Services Used
+- Google AI (Gemini) via @google/generative-ai
+  - Where: app/api/story/route.ts
+  - How: Generates a short, metaphorical story from a scenario prompt. Requires GEMINI_API_KEY. The API is invoked server-side with responseMimeType set to application/json for structured output.
+- Google Cloud Firestore (@google-cloud/firestore)
+  - Where: lib/firestore (helper) and app/api/story/route.ts
+  - How: If the user is signed in, each generated story is saved to the stories collection with userId, title, story, scenarioPrompt, and createdAt (server timestamp). Requires GOOGLE_CLOUD_PROJECT and credentials (ADC or service account) on the server.
+
+## Contributing
+We welcome contributions!
+- Fork the repo and create a feature branch.
+- Follow the existing code style and component patterns.
+- Open a pull request with a clear description and screenshots where applicable.
+
+Bug Reports and Feature Requests:
+- Please open an issue with steps to reproduce or a concise proposal.
 
 ## License
-This project currently has no explicit license. Add one if you plan to share or open-source the project.
+MIT (recommended). If a LICENSE file is not present, please add one before public distribution.
 
-## Acknowledgements
-- Next.js team for the framework
-- Radix UI and shadcn/ui for component patterns
-- Open-source community for libraries used in this project
+## Credits and Acknowledgements
+- Authors: AgentXcel Team
+- Major Libraries: Next.js, React, Tailwind CSS, Radix/shadcn‑inspired UI, NextAuth, @google/generative-ai, @google-cloud/firestore
+- Thanks to the open‑source community for tools and inspiration.
 
+## Project Status
+Active development (beta). Core flows are functional; UI and content continue to evolve.
 
-## Gemini Setup (Direct API)
-You can generate stories with Gemini without using VertexAI server SDK.
-
-1. Create a Gemini API key:
-   - Visit https://ai.google.dev and create an API key (Google AI Studio).
-2. Configure environment:
-   - In your .env.local, set:
-     GEMINI_API_KEY=your_api_key
-     # Optional to override default model
-     # GEMINI_MODEL=gemini-1.5-flash-002
-3. Usage in this app:
-   - The /api/story endpoint now uses the Google Generative AI SDK (@google/generative-ai).
-   - Default model: gemini-1.5-flash-002
-   - If you are signed in, generated stories are stored in Firestore.
-
-Notes:
-- VertexAI project/location variables are no longer required for story generation, but Firestore still needs your GCP project set (GOOGLE_CLOUD_PROJECT or GCLOUD_PROJECT) and credentials for server-side access.
-- If GEMINI_API_KEY is missing, the endpoint returns HTTP 500 with a clear error message.
+## Links
+- Live Demo: (add url if deployed)
+- Documentation: This README
+- Support: Open a GitHub issue
