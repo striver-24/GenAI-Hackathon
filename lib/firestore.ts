@@ -10,6 +10,12 @@ export function getFirestore() {
       process.env.FIREBASE_PROJECT_ID ||
       process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID
 
+    if (!projectId) {
+      throw new Error(
+        "Firestore project id is missing. Set GOOGLE_CLOUD_PROJECT (or GCLOUD_PROJECT/FIREBASE_PROJECT_ID/NEXT_PUBLIC_FIREBASE_PROJECT_ID) in your environment."
+      )
+    }
+
     db = new Firestore({
       projectId,
     })

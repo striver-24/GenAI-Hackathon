@@ -4,6 +4,9 @@ import { authOptions } from "@/lib/auth"
 import { getFirestore } from "@/lib/firestore"
 import { FieldValue } from "@google-cloud/firestore"
 
+export const runtime = "nodejs"
+export const dynamic = "force-dynamic"
+
 function badRequest(message: string) {
   return NextResponse.json({ error: message }, { status: 400 })
 }

@@ -5,6 +5,9 @@ import { FieldValue } from "@google-cloud/firestore"
 import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
 
+export const runtime = "nodejs"
+export const dynamic = "force-dynamic"
+
 const SYSTEM_PROMPT = `You are a wise, empathetic, and gentle storyteller. Your task is to write a short, metaphorical story (around 300-400 words) for a young person in India who is struggling with their mental health, based on the specific situation provided.
 
 Core Rules for Every Story:
@@ -46,13 +49,19 @@ export async function POST(req: Request) {
     const genAI = new GoogleGenerativeAI(apiKey)
     const model = genAI.getGenerativeModel({ model: modelName })
 
-    const result = await model.generateContent({
+    const TIMEOUT_MS = Number(process.env.STORY_TIMEOUT_MS || 20000)
+    const aiCall = model.generateContent({
       systemInstruction: { role: "system", parts: [{ text: SYSTEM_PROMPT + "\nKeep within 300-400 words." }] },
       contents: [
         { role: "user", parts: [{ text: scenarioPrompt }] },
       ],
       generationConfig: { responseMimeType: "application/json" },
     })
+
+    const result = await Promise.race([
+      aiCall,
+      new Promise((_, reject) => setTimeout(() => reject(new Error("Upstream timeout")), TIMEOUT_MS)),
+    ]) as any
 
     const text = await result.response.text()
 
@@ -108,10 +117,13 @@ export async function POST(req: Request) {
       console.error("Firestore write failed", e)
     }
 
-    return NextResponse.json({
-      title: parsed.title || "A Gentle Story",
-      story: parsed.story || "",
-    })
+    return NextResponse.json(
+      {
+        title: parsed.title || "A Gentle Story",
+        story: parsed.story || "",
+      },
+      { headers: { "Cache-Control": "no-store" } }
+    )
   } catch (err: any) {
     console.error(err)
     return NextResponse.json({ error: err?.message || "Failed to generate story" }, { status: 500 })
