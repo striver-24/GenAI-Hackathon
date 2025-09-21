@@ -7,49 +7,62 @@ import { FieldValue } from "@google-cloud/firestore"
 export const runtime = "nodejs"
 export const dynamic = "force-dynamic"
 
+// Helper function to add CORS headers
+function corsHeaders(response: NextResponse) {
+  response.headers.set('Access-Control-Allow-Origin', '*')
+  response.headers.set('Access-Control-Allow-Methods', 'GET, POST, OPTIONS')
+  response.headers.set('Access-Control-Allow-Headers', 'Content-Type, Authorization')
+  return response
+}
+
 function badRequest(message: string) {
-  return NextResponse.json({ error: message }, { status: 400 })
+  return corsHeaders(NextResponse.json({ error: message }, { status: 400 }))
+}
+
+// Handle OPTIONS requests for CORS preflight
+export async function OPTIONS() {
+  return corsHeaders(new NextResponse(null, { status: 204 }))
 }
 
 export async function GET() {
   const session = await getServerSession(authOptions)
   if (!session?.user) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+    return corsHeaders(NextResponse.json({ error: "Unauthorized" }, { status: 401 }))
   }
   const userId = (session.user as any).id as string | undefined
   if (!userId) {
-    return NextResponse.json({ error: "Missing user id in session" }, { status: 500 })
+    return corsHeaders(NextResponse.json({ error: "Missing user id in session" }, { status: 500 }))
   }
   try {
     const db = getFirestore()
     const doc = await db.collection("profiles").doc(userId).get()
     if (!doc.exists) {
-      return NextResponse.json({ profile: null })
+      return corsHeaders(NextResponse.json({ profile: null }))
     }
-    return NextResponse.json({ profile: { id: userId, ...(doc.data() as any) } })
+    return corsHeaders(NextResponse.json({ profile: { id: userId, ...(doc.data() as any) } }))
   } catch (e: any) {
     // Gracefully handle Firestore NOT_FOUND errors (e.g., missing project/db in local dev)
     const code = e?.code
     const msg = e?.message || ""
     if (code === 5 || msg.includes("NOT_FOUND")) {
       // Treat as no profile rather than a server error
-      return NextResponse.json({ profile: null })
+      return corsHeaders(NextResponse.json({ profile: null }))
     }
     console.error("GET /api/profile error", e)
-    return NextResponse.json({ error: e?.message || "Failed to load profile" }, { status: 500 })
+    return corsHeaders(NextResponse.json({ error: e?.message || "Failed to load profile" }, { status: 500 }))
   }
 }
 
 export async function POST(req: Request) {
   const session = await getServerSession(authOptions)
   if (!session?.user) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+    return corsHeaders(NextResponse.json({ error: "Unauthorized" }, { status: 401 }))
   }
   const userId = (session.user as any).id as string | undefined
   const email = session.user.email || ""
   const name = session.user.name || ""
   if (!userId) {
-    return NextResponse.json({ error: "Missing user id in session" }, { status: 500 })
+    return corsHeaders(NextResponse.json({ error: "Missing user id in session" }, { status: 500 }))
   }
 
   let body: any
@@ -102,9 +115,9 @@ export async function POST(req: Request) {
 
     await ref.set(payload, { merge: true })
     const saved = await ref.get()
-    return NextResponse.json({ profile: { id: userId, ...(saved.data() as any) } })
+    return corsHeaders(NextResponse.json({ profile: { id: userId, ...(saved.data() as any) } }))
   } catch (e: any) {
     console.error("POST /api/profile error", e)
-    return NextResponse.json({ error: e?.message || "Failed to save profile" }, { status: 500 })
+    return corsHeaders(NextResponse.json({ error: e?.message || "Failed to save profile" }, { status: 500 }))
   }
 }

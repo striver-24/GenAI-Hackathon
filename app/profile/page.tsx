@@ -30,11 +30,11 @@ export default function ProfilePage() {
       setLoading(true)
       setError(null)
       try {
-        // Use absolute URL for API calls in production
-        const baseUrl = process.env.NEXT_PUBLIC_VERCEL_URL 
-          ? `https://${process.env.NEXT_PUBLIC_VERCEL_URL}` 
-          : '';
-        const res = await fetch(`${baseUrl}/api/profile`, { cache: "no-store" })
+        // Use relative path for API calls to avoid CORS issues
+        const res = await fetch('/api/profile', { 
+          cache: "no-store",
+          credentials: 'include' // Include credentials for authentication
+        })
         if (res.status === 401) {
           return
         }

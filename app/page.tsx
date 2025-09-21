@@ -77,11 +77,8 @@ export default function MindspaceApp() {
             // Then check profile in background
             ;(async () => {
                 try {
-                    // Use absolute URL for API calls in production
-                    const baseUrl = process.env.NEXT_PUBLIC_VERCEL_URL 
-                        ? `https://${process.env.NEXT_PUBLIC_VERCEL_URL}` 
-                        : '';
-                    const res = await fetch(`${baseUrl}/api/profile`, { 
+                    // Use relative path for API calls to avoid CORS issues
+                    const res = await fetch('/api/profile', { 
                         cache: 'no-store',
                         // Add credentials to ensure cookies are sent
                         credentials: 'include'
@@ -276,10 +273,7 @@ export default function MindspaceApp() {
         
         // Save check-in data to user's account
         try {
-            const baseUrl = process.env.NEXT_PUBLIC_VERCEL_URL 
-                ? `https://${process.env.NEXT_PUBLIC_VERCEL_URL}` 
-                : '';
-            await fetch(`${baseUrl}/api/chat/checkin`, {
+            await fetch('/api/chat/checkin', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 credentials: 'include',
