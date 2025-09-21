@@ -254,6 +254,7 @@ const Navbar = ({ isLoggedIn, currentPage, setCurrentPage, setIsLoggedIn, setSho
                         <Button variant={currentPage === "articles" ? "default" : "ghost"} onClick={() => setCurrentPage("articles")} className="rounded-full"><BookOpen className="h-4 w-4 mr-2" /> Articles</Button>
                         <Button variant={currentPage === "stories" ? "default" : "ghost"} onClick={() => setCurrentPage("stories")} className="rounded-full"><ScrollText className="h-4 w-4 mr-2" /> Stories</Button>
                         <Button variant={currentPage === "activities" ? "default" : "ghost"} onClick={() => setCurrentPage("activities")} className="rounded-full"><Activity className="h-4 w-4 mr-2" /> Activities</Button>
+                        <Button variant="ghost" className="rounded-full" asChild><a href="/know-yourself"><Smile className="h-4 w-4 mr-2" /> Know Yourself</a></Button>
                     </div>
                 )}
                 <div className="flex items-center gap-2 sm:gap-3">

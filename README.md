@@ -76,7 +76,37 @@ pnpm start
 ```
 
 ## Configuration
-No environment variables are required to run the app in development by default. If you introduce APIs or external services later, document the variables here.
+This app now integrates Google OAuth (NextAuth), Vertex AI (Gemini), and Firestore.
+
+Required environment variables (create .env.local):
+
+NEXTAUTH_URL=http://localhost:3000
+NEXTAUTH_SECRET=your_long_random_string
+GOOGLE_CLIENT_ID=your_google_oauth_client_id
+GOOGLE_CLIENT_SECRET=your_google_oauth_client_secret
+
+# Google Cloud / Vertex AI
+GOOGLE_CLOUD_PROJECT=your_gcp_project_id
+# or GCLOUD_PROJECT=your_gcp_project_id
+VERTEX_LOCATION=us-central1
+# Use Application Default Credentials in local/dev, or set a service account JSON:
+# GOOGLE_APPLICATION_CREDENTIALS=/absolute/path/to/service-account.json
+
+Setup steps:
+1) Create a GCP project; enable APIs: Vertex AI API, Firestore API, IAM, Cloud Logging.
+2) Create OAuth 2.0 credentials in Google Cloud Console (or Google Cloud Platform > APIs & Services) and set authorized redirect URI: http://localhost:3000/api/auth/callback/google
+3) Firestore: in the same project, create a Firestore database (Native mode).
+4) Local dev credentials:
+   - EITHER run `gcloud auth application-default login` to set ADC (recommended),
+   - OR download a service account key with Firestore User/Client and Vertex AI User roles, and set GOOGLE_APPLICATION_CREDENTIALS.
+5) Install deps and run the app:
+   npm install
+   npm run dev
+
+Notes:
+- The “Know Yourself” page derives a scenario from your check-in and calls /api/story.
+- The /api/story endpoint prompts Gemini 1.5 Flash with a strict system prompt and returns {title, story}.
+- If signed in with Google, generated stories are stored in Firestore (collection: stories).
 
 ## Scripts (from package.json)
 - dev: `next dev`
