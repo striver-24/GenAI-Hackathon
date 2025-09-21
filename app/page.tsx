@@ -60,6 +60,10 @@ export default function MindspaceApp() {
     const [canShowAppNav, setCanShowAppNav] = useState(false)
     const [storyLoading, setStoryLoading] = useState(false)
     const [storyData, setStoryData] = useState<{ title: string; story: string } | null>(null)
+    const [showOnboardingQuiz, setShowOnboardingQuiz] = useState(false)
+    const [onboardingAnswers, setOnboardingAnswers] = useState<string[]>(Array(12).fill(""))
+    const [onboardingSubmitting, setOnboardingSubmitting] = useState(false)
+    const [onboardingResult, setOnboardingResult] = useState<{ observation: string; suggestions: string[]; category: 'ab' | 'stress' | 'moodSocial' | 'widespread' } | null>(null)
 
     const { data: session } = useSession()
     useEffect(() => {
@@ -92,6 +96,16 @@ export default function MindspaceApp() {
             setCurrentPage('welcome')
         }
     }, [session])
+
+    // Show onboarding quiz on first visit to dashboard if not completed
+    useEffect(() => {
+        if (currentPage === 'dashboard') {
+            try {
+                const done = localStorage.getItem('hasCompletedOnboarding')
+                if (!done) setShowOnboardingQuiz(true)
+            } catch {}
+        }
+    }, [currentPage])
 
     const [moodHistory, setMoodHistory] = useState<MoodEntry[]>([
         { date: "2024-01-15", mood: 7, energy: 6, stress: 4, notes: "Good day overall" },
@@ -197,6 +211,33 @@ export default function MindspaceApp() {
     ]
 
     const MOTIVATION_QUOTES: string[] = ["Small steps every day lead to big changes.", "Your feelings are valid. It’s okay to take it slow.", "Breathe. You’ve handled hard things before.", "Progress, not perfection.", "Rest is productive.", "You are not your thoughts; you are the observer of them.", "One day at a time.", "Self-kindness is a superpower.", "Asking for help is a sign of strength.", "You’re doing better than you think."]
+
+    // Onboarding 12-question Mental Wellness Check-in
+    const ONBOARDING_INTRO = "Welcome! This is a safe and private space for you to check in with yourself. There are no right or wrong answers. Just be honest. This will help us understand how you're feeling so we can suggest the best ways to support you. Your responses are completely confidential."
+    const ONBOARDING_OPTIONS = [
+        { key: 'A', label: 'Not at all / Rarely' },
+        { key: 'B', label: 'Some of the time' },
+        { key: 'C', label: 'Often' },
+        { key: 'D', label: 'Almost always' },
+    ] as const
+    const QUESTIONS: { text: string; section: 'mood' | 'stress' | 'energy' | 'social' }[] = [
+        // Mood & Emotions (1-3)
+        { text: 'In the last two weeks, how often have you felt low, sad, or down?', section: 'mood' },
+        { text: 'How often have you found it difficult to find joy or interest in activities you usually like?', section: 'mood' },
+        { text: 'How often have you felt irritable, on edge, or easily annoyed?', section: 'mood' },
+        // Stress & Pressure (4-6)
+        { text: 'How often do you feel overwhelmed by pressure from your studies, exams, or career expectations?', section: 'stress' },
+        { text: 'How often have you found yourself worrying constantly about the future or about things you can\'t control?', section: 'stress' },
+        { text: 'How often do you feel tense, restless, or unable to relax?', section: 'stress' },
+        // Energy & Daily Functioning (7-9)
+        { text: 'How would you describe your energy lately? Have you been feeling tired or drained most of the time?', section: 'energy' },
+        { text: 'How has your sleep been overall?', section: 'energy' },
+        { text: 'Have you noticed significant changes in your appetite?', section: 'energy' },
+        // Social Connection & Support (10-12)
+        { text: 'How often have you felt lonely or isolated, even around other people?', section: 'social' },
+        { text: 'How often do you feel like you have someone you can talk to honestly without fear of being judged?', section: 'social' },
+        { text: 'When thinking about discussing your feelings, how comfortable do you feel about reaching out for help?', section: 'social' },
+    ]
 
     // --- HANDLER FUNCTIONS ---
     const handleAuth = (e: React.FormEvent) => {
@@ -314,6 +355,57 @@ export default function MindspaceApp() {
             <main className="flex-1">{renderCurrentPage()}</main>
             <Footer setShowEmergencyModal={setShowEmergencyModal} />
             <EmergencyModal showEmergencyModal={showEmergencyModal} setShowEmergencyModal={setShowEmergencyModal} emergencyContacts={emergencyContacts} />
+            {showOnboardingQuiz && (
+                <OnboardingQuizModal
+                    intro={ONBOARDING_INTRO}
+                    questions={QUESTIONS}
+                    options={ONBOARDING_OPTIONS}
+                    answers={onboardingAnswers}
+                    setAnswers={setOnboardingAnswers}
+                    submitting={onboardingSubmitting}
+                    result={onboardingResult}
+                    storyLoading={storyLoading}
+                    storyData={storyData}
+                    onClose={() => setShowOnboardingQuiz(false)}
+                    onSubmit={async () => {
+                        // Validate
+                        if (onboardingAnswers.some((a) => !a)) {
+                            alert('Please answer all questions before submitting.')
+                            return
+                        }
+                        setOnboardingSubmitting(true)
+                        const res = analyzeOnboardingAnswers(onboardingAnswers)
+                        setOnboardingResult(res)
+                        // Build scenario prompt based on category
+                        let scenarioPrompt = ''
+                        if (res.category === 'ab') {
+                            scenarioPrompt = 'A young person walking through a gentle garden, noticing small blooms and learning simple ways to care for their inner world.'
+                        } else if (res.category === 'stress') {
+                            scenarioPrompt = 'A traveler caught in strong winds on a steep path, learning to take steady breaths and find shelter beneath a banyan tree.'
+                        } else if (res.category === 'moodSocial') {
+                            scenarioPrompt = 'Someone moving through a grey, quiet town, finding a single bright flower and a friendly nod from a passing firefly.'
+                        } else {
+                            scenarioPrompt = 'A wanderer carrying a heavy backpack through misty hills, pausing by a quiet stream to rest and breathe as fireflies begin to glow.'
+                        }
+                        try {
+                            setStoryData(null)
+                            setStoryLoading(true)
+                            const resp = await fetch('/api/story', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ scenarioPrompt }) })
+                            if (resp.ok) {
+                                const data = await resp.json()
+                                setStoryData({ title: data.title || 'A Gentle Story', story: data.story || '' })
+                                // persist
+                                const payload = { answers: onboardingAnswers, observation: res.observation, suggestions: res.suggestions, category: res.category, story: { title: data.title, story: data.story }, timestamp: Date.now() }
+                                try { localStorage.setItem('knowYourselfLatest', JSON.stringify(payload)); localStorage.setItem('hasCompletedOnboarding', 'true') } catch {}
+                            }
+                        } catch {}
+                        finally {
+                            setStoryLoading(false)
+                            setOnboardingSubmitting(false)
+                        }
+                    }}
+                />
+            )}
         </div>
     )
 }
@@ -605,3 +697,133 @@ const ActivitiesPage = () => (
         </div>
     </div>
 )
+
+// --- ONBOARDING ANALYSIS & MODAL ---
+function analyzeOnboardingAnswers(answers: string[]): { observation: string; suggestions: string[]; category: 'ab' | 'stress' | 'moodSocial' | 'widespread' } {
+    const sectionByIndex: ('mood' | 'stress' | 'energy' | 'social')[] = ['mood','mood','mood','stress','stress','stress','energy','energy','energy','social','social','social']
+    const counts = { mood: 0, stress: 0, energy: 0, social: 0 }
+    let totalCD = 0
+    answers.forEach((a, i) => {
+        const isCD = a === 'C' || a === 'D'
+        if (isCD) { totalCD++; const sec = sectionByIndex[i]; (counts as any)[sec]++ }
+    })
+    // Mostly A/B
+    if (totalCD <= 3) {
+        return {
+            category: 'ab',
+            observation: "Thank you for sharing. It seems like you're navigating life's ups and downs, and it’s great that you’re taking time to check in with yourself. Building emotional awareness is a powerful skill.",
+            suggestions: [
+                'Explore: Discover articles on building resilience and mindfulness.',
+                'Journal: Try our daily gratitude journal to focus on the positives.',
+                'Mood Tracker: Keep track of your mood to notice patterns over time.',
+            ],
+        }
+    }
+    // Stress concentrated (Q4-6)
+    const stressConcentrated = counts.stress >= 2 && counts.stress >= counts.mood && counts.stress >= counts.energy && counts.stress >= counts.social
+    if (stressConcentrated) {
+        return {
+            category: 'stress',
+            observation: "It sounds like you might be under a lot of pressure right now. Juggling many expectations is tough, and feeling overwhelmed is a very normal response. Remember to be kind to yourself.",
+            suggestions: [
+                'Stress Management Tools: Explore guided breathing exercises and meditation to find some calm.',
+                'Time Management Guides: Check out resources on managing your workload effectively.',
+                'AI Companion Chat: Share your worries—our AI companion listens without judgment.',
+            ],
+        }
+    }
+    // Mood & Social concentrated (Q1-3, 10-11)
+    const moodSocialCD = answers.map((a, i) => ({ a, i })).filter(({ a, i }) => (a === 'C' || a === 'D') && ([0,1,2,9,10].includes(i))).length
+    const moodCD = counts.mood
+    const socialCD = counts.social
+    const moodSocialConcentrated = moodSocialCD >= 2 && moodCD >= 1 && socialCD >= 1
+    if (moodSocialConcentrated) {
+        return {
+            category: 'moodSocial',
+            observation: "It seems like things might be feeling a bit heavy and lonely lately. It takes courage to acknowledge these feelings. Please know that you are not alone, and many people go through similar experiences.",
+            suggestions: [
+                'AI Companion for Emotional Support: Talk through what’s on your mind with our empathetic AI.',
+                'Positive Affirmations: Start your day with gentle, self-compassionate affirmations.',
+                'Connect with a Professional: If these feelings continue, consider speaking with a wellness professional.',
+            ],
+        }
+    }
+    // Widespread across sections incl. energy
+    const multiSections = [counts.mood, counts.stress, counts.energy, counts.social].filter((c) => c >= 2).length >= 2
+    if (counts.energy >= 1 && (multiSections || totalCD >= 6)) {
+        return {
+            category: 'widespread',
+            observation: "Thank you for being so honest. It seems like you’re going through a particularly challenging time that might be affecting many parts of your life. It’s brave of you to share this, and we want you to know that support is available.",
+            suggestions: [
+                'Immediate Support: Here are 24/7 confidential helplines you can connect with right now (see Emergency section).',
+                'Urgent AI Chat: Our AI companion is ready to listen if you need to talk immediately.',
+                'Connect with a Professional: We strongly encourage connecting with a mental health professional for guidance.',
+            ],
+        }
+    }
+    // Default to stress as common case
+    return {
+        category: 'stress',
+        observation: "It sounds like you might be under a lot of pressure right now. Juggling many expectations is tough, and feeling overwhelmed is a very normal response.",
+        suggestions: [
+            'Stress Management Tools: Explore guided breathing exercises and meditation to find some calm.',
+            'Time Management Guides: Check out resources on managing your workload effectively.',
+            'AI Companion Chat: Share your worries—our AI companion listens without judgment.',
+        ],
+    }
+}
+
+function OnboardingQuizModal({ intro, questions, options, answers, setAnswers, submitting, result, storyLoading, storyData, onClose, onSubmit }) {
+    return (
+        <div className="fixed inset-0 z-50 bg-black/40 backdrop-blur-sm flex items-center justify-center p-4">
+            <Card className="w-full max-w-3xl max-h-[90vh] overflow-y-auto">
+                <CardHeader>
+                    <CardTitle className="text-green-800">Mental Wellness Check-in</CardTitle>
+                    <CardDescription>Welcome! This is a safe and private space. Be honest—there are no right or wrong answers.</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-6">
+                    <div className="text-sm text-green-800 bg-green-50 border border-green-200 p-3 rounded-md">{intro}</div>
+                    <div className="space-y-4">
+                        {questions.map((q, idx) => (
+                            <div key={idx} className="p-3 rounded-lg bg-white/50 border border-green-200">
+                                <div className="text-sm text-green-900 mb-2">{idx + 1}. {q.text}</div>
+                                <div className="flex flex-wrap gap-2">
+                                    {options.map((opt) => (
+                                        <Button key={opt.key} type="button" variant={answers[idx] === opt.key ? 'default' : 'outline'} className={`rounded-full ${answers[idx] === opt.key ? 'bg-[#99BC85] hover:bg-[#86A976] text-white' : ''}`} onClick={() => {
+                                            const next = [...answers]; next[idx] = opt.key; setAnswers(next)
+                                        }}>{opt.key}) {opt.label}</Button>
+                                    ))}
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                    {result && (
+                        <div className="space-y-3 p-3 bg-white/70 border border-green-200 rounded-md">
+                            <div className="font-semibold text-green-900">Our gentle observation</div>
+                            <div className="text-green-800 text-sm">{result.observation}</div>
+                            <ul className="list-disc pl-5 text-sm text-green-800">
+                                {result.suggestions.map((s, i) => (<li key={i}>{s}</li>))}
+                            </ul>
+                        </div>
+                    )}
+                    <div className="flex items-center gap-2">
+                        <Button onClick={onSubmit} disabled={submitting} className="rounded-full bg-[#99BC85] hover:bg-[#86A976]">{submitting ? 'Submitting...' : 'Submit Check-in'}</Button>
+                        <Button onClick={onClose} variant="outline" className="rounded-full">{result ? 'Close' : 'Skip for now'}</Button>
+                    </div>
+                    {(storyLoading || storyData) && (
+                        <div className="mt-2 p-3 bg-white/80 border border-green-200 rounded-md">
+                            {storyLoading ? (
+                                <div className="text-sm text-green-700">Generating your story...</div>
+                            ) : storyData ? (
+                                <div>
+                                    <h3 className="text-lg font-semibold text-green-800 mb-2">{storyData.title}</h3>
+                                    <p className="text-green-700 leading-relaxed whitespace-pre-wrap">{storyData.story}</p>
+                                </div>
+                            ) : null}
+                        </div>
+                    )}
+                </CardContent>
+            </Card>
+        </div>
+    )
+}
